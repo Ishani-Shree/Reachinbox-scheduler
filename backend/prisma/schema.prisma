@@ -50,8 +50,23 @@ model Campaign {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sender          Sender   @relation(fields: [senderId], references: [id])
   emails          Email[]
+  attachments     Attachment[]
 
   @@unique([userId, idempotencyKey])
+}
+
+/// A file attached to every email of a campaign (stored once per campaign).
+model Attachment {
+  id          String   @id @default(uuid())
+  campaignId  String
+  filename    String
+  contentType String
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }
 
 enum EmailStatus {

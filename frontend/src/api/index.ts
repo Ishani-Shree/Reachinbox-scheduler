@@ -1,7 +1,8 @@
 import type {
   CreateCampaignRequest,
   CreateCampaignResponse,
-  Email,
+  EmailDetail,
+  EmailFilter,
   EmailListResponse,
   EmailStats,
   EmailTab,
@@ -19,9 +20,10 @@ export const authApi = {
 };
 
 export const emailsApi = {
-  list: (params: { tab: EmailTab; q?: string; page?: number; limit?: number }) => {
+  list: (params: { tab: EmailTab; filter?: EmailFilter; q?: string; page?: number; limit?: number }) => {
     const qs = new URLSearchParams({
       tab: params.tab,
+      filter: params.filter ?? 'all',
       page: String(params.page ?? 1),
       limit: String(params.limit ?? 50),
     });
@@ -29,8 +31,10 @@ export const emailsApi = {
     return request<EmailListResponse>(`/emails?${qs}`);
   },
   stats: () => request<EmailStats>('/emails/stats'),
-  get: (id: string) => request<Email>(`/emails/${id}`),
+  get: (id: string) => request<EmailDetail>(`/emails/${id}`),
 };
+
+export const attachmentUrl = (id: string) => `/api/attachments/${id}`;
 
 export const campaignsApi = {
   create: (body: CreateCampaignRequest, idempotencyKey: string) =>

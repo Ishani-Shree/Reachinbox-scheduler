@@ -1,40 +1,41 @@
-import { AlertCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { AlertCircle, Clock, Loader2 } from 'lucide-react';
 import type { Email } from '../../types';
 import { cn } from '../../utils/cn';
 import { formatPillTime } from '../../utils/format';
 
-const styles = {
-  scheduled: 'bg-orange-50 text-orange-600',
-  sending: 'bg-sky-50 text-sky-600',
-  sent: 'bg-ink-100 text-ink-700',
-  failed: 'bg-red-50 text-red-600',
-} as const;
+const base = 'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-[3px] text-xs';
 
-/** Status pill. Scheduled emails show their send time, like the Figma list. */
+/** List pill: orange send time for scheduled emails, grey "Sent", red "Failed" (as in the Figma). */
 export function StatusBadge({
   email,
   className,
 }: {
-  email: Pick<Email, 'status' | 'scheduledAt' | 'sentAt'>;
+  email: Pick<Email, 'status' | 'scheduledAt'>;
   className?: string;
 }) {
-  const content = {
-    scheduled: { icon: <Clock size={13} />, label: formatPillTime(email.scheduledAt) },
-    sending: { icon: <Loader2 size={13} className="animate-spin" />, label: 'Sending' },
-    sent: { icon: <CheckCircle2 size={13} />, label: 'Sent' },
-    failed: { icon: <AlertCircle size={13} />, label: 'Failed' },
-  }[email.status];
-
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium',
-        styles[email.status],
-        className,
-      )}
-    >
-      {content.icon}
-      {content.label}
-    </span>
-  );
+  switch (email.status) {
+    case 'scheduled':
+      return (
+        <span className={cn(base, 'border-pending-200 bg-pending-50 font-medium text-pending-700', className)}>
+          <Clock size={12} strokeWidth={2.25} />
+          {formatPillTime(email.scheduledAt)}
+        </span>
+      );
+    case 'sending':
+      return (
+        <span className={cn(base, 'border-sky-200 bg-sky-50 font-medium text-sky-700', className)}>
+          <Loader2 size={12} className="animate-spin" />
+          Sending
+        </span>
+      );
+    case 'sent':
+      return <span className={cn(base, 'border-ink-200 bg-ink-100 text-ink-700', className)}>Sent</span>;
+    case 'failed':
+      return (
+        <span className={cn(base, 'border-red-200 bg-red-50 font-medium text-red-600', className)}>
+          <AlertCircle size={12} />
+          Failed
+        </span>
+      );
+  }
 }

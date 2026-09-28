@@ -4,20 +4,33 @@ import { z } from 'zod';
 import { prisma } from '../lib/clients';
 import { createLogger } from '../lib/logger';
 import { enqueueEmails } from '../queue/emailQueue';
+import { toPlainText, toSafeHtml } from '../utils/html';
 import { HttpError } from '../utils/http';
 import { indexEmails } from './search';
 
 const log = createLogger('campaigns');
 
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+const attachmentSchema = z.object({
+  filename: z.string().trim().min(1).max(255),
+  contentType: z.string().trim().min(1).max(150),
+  /** File contents, base64 encoded. */
+  data: z.string().min(1),
+});
+
 export const createCampaignSchema = z.object({
   senderId: z.string().uuid(),
   subject: z.string().trim().min(1).max(500),
-  body: z.string().trim().min(1).max(50_000),
+  /** HTML from the rich-text editor, or plain text. Sanitised before storage. */
+  body: z.string().trim().min(1).max(200_000),
   recipients: z.array(z.string().trim().toLowerCase().email()).min(1).max(20_000),
   startAt: z.coerce.date(),
   delayBetweenSeconds: z.number().int().min(0).max(3600),
   hourlyLimit: z.number().int().min(1).max(100_000),
   idempotencyKey: z.string().max(100).optional(),
+  attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 
@@ -40,6 +53,17 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
   const sender = await prisma.sender.findUnique({ where: { id: input.senderId } });
   if (!sender) throw new HttpError(400, 'Unknown sender');
 
+  const body = toSafeHtml(input.body);
+  if (!toPlainText(body)) throw new HttpError(400, 'Email body is empty');
+
+  const attachments = input.attachments.map((a) => {
+    const data = Buffer.from(a.data, 'base64');
+    return { filename: a.filename, contentType: a.contentType, size: data.length, data };
+  });
+  if (attachments.reduce((sum, a) => sum + a.size, 0) > MAX_ATTACHMENT_BYTES) {
+    throw new HttpError(400, 'Attachments exceed the 10 MB limit');
+  }
+
   const recipients = [...new Set(input.recipients)];
   const startAt = new Date(Math.max(Date.now(), input.startAt.getTime()));
   const delayMs = input.delayBetweenSeconds * 1000;
@@ -52,7 +76,7 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
       senderId: sender.id,
       toEmail,
       subject: input.subject,
-      body: input.body,
+      body,
       scheduledAt,
       originalScheduledAt: scheduledAt,
     };
@@ -66,12 +90,13 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
           userId,
           senderId: sender.id,
           subject: input.subject,
-          body: input.body,
+          body,
           startAt,
           delayBetweenMs: delayMs,
           hourlyLimit: input.hourlyLimit,
           totalRecipients: recipients.length,
           idempotencyKey: input.idempotencyKey,
+          attachments: { create: attachments },
         },
       });
       await tx.email.createMany({ data: emails.map((e) => ({ ...e, campaignId: c.id })) });

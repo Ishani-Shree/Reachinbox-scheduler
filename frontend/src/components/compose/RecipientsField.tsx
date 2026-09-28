@@ -54,21 +54,26 @@ export function RecipientsField({ value, onChange }: RecipientsFieldProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-2 border-b border-ink-200 py-1.5 focus-within:border-brand-500">
+      <div className="flex min-h-[40px] items-center gap-2 py-1">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {value.slice(0, VISIBLE_CHIPS).map((email) => (
             <span
               key={email}
-              className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-xs text-brand-700"
+              className="inline-flex items-center gap-1 rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs text-ink-900"
             >
               {email}
-              <button aria-label={`Remove ${email}`} onClick={() => onChange(value.filter((v) => v !== email))}>
+              <button
+                type="button"
+                aria-label={`Remove ${email}`}
+                className="text-ink-400 hover:text-ink-900"
+                onClick={() => onChange(value.filter((v) => v !== email))}
+              >
                 <X size={12} />
               </button>
             </span>
           ))}
           {hidden > 0 && (
-            <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-medium text-ink-700">
+            <span className="rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs text-ink-900">
               +{hidden.toLocaleString()}
             </span>
           )}
@@ -85,13 +90,13 @@ export function RecipientsField({ value, onChange }: RecipientsFieldProps) {
               }
             }}
             placeholder={value.length ? '' : 'recipient@example.com'}
-            className="min-w-[160px] flex-1 border-0 bg-transparent py-1 text-sm placeholder:text-ink-400 focus:outline-none focus:ring-0"
+            className="min-w-[160px] flex-1 border-0 bg-transparent px-0 py-1 text-sm placeholder:text-ink-400 focus:outline-none focus:ring-0"
           />
         </div>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
+          className="inline-flex shrink-0 items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700"
         >
           <Upload size={16} /> Upload List
         </button>
@@ -104,12 +109,19 @@ export function RecipientsField({ value, onChange }: RecipientsFieldProps) {
         />
       </div>
       {value.length > 0 && (
-        <div className="mt-1.5 flex items-center justify-between text-xs text-ink-500">
+        <div className="flex items-center justify-between pb-1.5 text-xs text-ink-500">
           <span>
             <span className="font-semibold text-brand-600">{pluralize(value.length, 'email address')}</span> detected
             {fileName && <> · from {fileName}</>}
           </span>
-          <button className="hover:text-red-600" onClick={() => (onChange([]), setFileName(null))}>
+          <button
+            type="button"
+            className="hover:text-red-600"
+            onClick={() => {
+              onChange([]);
+              setFileName(null);
+            }}
+          >
             Clear all
           </button>
         </div>

@@ -1,8 +1,11 @@
 import type { Email, EmailStatus, Prisma, Sender } from '@prisma/client';
 import { prisma } from '../lib/clients';
+import { toPlainText } from '../utils/html';
 import { searchEmailIds } from './search';
 
 export type EmailTab = 'scheduled' | 'sent';
+/** Narrows a tab: sent/failed on the Sent tab, rate-limited (deferred) on the Scheduled tab. */
+export type EmailFilter = 'all' | 'sent' | 'failed' | 'deferred';
 
 export const TAB_STATUSES: Record<EmailTab, EmailStatus[]> = {
   scheduled: ['SCHEDULED', 'SENDING'],
@@ -17,6 +20,7 @@ export const toEmailDto = (e: EmailWithSender) => ({
   toEmail: e.toEmail,
   subject: e.subject,
   body: e.body,
+  preview: toPlainText(e.body).replace(/\s+/g, ' ').slice(0, 200),
   status: e.status.toLowerCase() as Lowercase<EmailStatus>,
   scheduledAt: e.scheduledAt.toISOString(),
   originalScheduledAt: e.originalScheduledAt.toISOString(),
@@ -29,8 +33,22 @@ export const toEmailDto = (e: EmailWithSender) => ({
 
 const senderSelect = { sender: { select: { name: true, email: true } } } as const;
 
-export async function listEmails(params: { userId: string; tab: EmailTab; q?: string; page: number; limit: number }) {
-  const statuses = TAB_STATUSES[params.tab];
+function statusesFor(tab: EmailTab, filter: EmailFilter): EmailStatus[] {
+  if (tab === 'sent' && filter === 'sent') return ['SENT'];
+  if (tab === 'sent' && filter === 'failed') return ['FAILED'];
+  return TAB_STATUSES[tab];
+}
+
+export async function listEmails(params: {
+  userId: string;
+  tab: EmailTab;
+  filter: EmailFilter;
+  q?: string;
+  page: number;
+  limit: number;
+}) {
+  const statuses = statusesFor(params.tab, params.filter);
+  const deferredOnly = params.tab === 'scheduled' && params.filter === 'deferred';
   const skip = (params.page - 1) * params.limit;
   // Scheduled: soonest first. Sent: most recent first.
   const orderBy: Prisma.EmailOrderByWithRelationInput[] =
@@ -41,6 +59,7 @@ export async function listEmails(params: { userId: string; tab: EmailTab; q?: st
       userId: params.userId,
       q: params.q,
       statuses,
+      deferredOnly,
       from: skip,
       size: params.limit,
     });
@@ -58,6 +77,7 @@ export async function listEmails(params: { userId: string; tab: EmailTab; q?: st
   const where: Prisma.EmailWhereInput = {
     userId: params.userId,
     status: { in: statuses },
+    ...(deferredOnly ? { deferredCount: { gt: 0 } } : {}),
     ...(params.q
       ? {
           OR: [
@@ -86,6 +106,24 @@ export async function emailStats(userId: string) {
 }
 
 export async function getEmail(userId: string, id: string) {
-  const email = await prisma.email.findFirst({ where: { id, userId }, include: senderSelect });
-  return email ? toEmailDto(email) : null;
+  const email = await prisma.email.findFirst({
+    where: { id, userId },
+    include: {
+      ...senderSelect,
+      campaign: {
+        select: {
+          attachments: {
+            select: { id: true, filename: true, contentType: true, size: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      },
+    },
+  });
+  return email ? { ...toEmailDto(email), attachments: email.campaign.attachments } : null;
+}
+
+/** Attachment bytes, only if the attachment belongs to one of the user's campaigns. */
+export function getAttachment(userId: string, id: string) {
+  return prisma.attachment.findFirst({ where: { id, campaign: { userId } } });
 }

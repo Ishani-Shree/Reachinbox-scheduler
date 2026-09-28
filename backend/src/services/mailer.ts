@@ -3,6 +3,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { env } from '../config/env';
 import { prisma } from '../lib/clients';
 import { createLogger } from '../lib/logger';
+import { toPlainText, toSafeHtml } from '../utils/html';
 
 const log = createLogger('mailer');
 const transporters = new Map<string, Transporter>();
@@ -23,16 +24,39 @@ function getTransporter(sender: Sender): Transporter {
   return t;
 }
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/** Attachments are identical for every email of a campaign, so keep recent ones in memory. */
+const attachmentCache = new Map<string, { filename: string; contentType: string; content: Buffer }[]>();
+const ATTACHMENT_CACHE_SIZE = 20;
 
-export async function sendMail(sender: Sender, mail: { id: string; toEmail: string; subject: string; body: string }) {
+async function campaignAttachments(campaignId: string) {
+  const cached = attachmentCache.get(campaignId);
+  if (cached) return cached;
+  const rows = await prisma.attachment.findMany({
+    where: { campaignId },
+    select: { filename: true, contentType: true, data: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  const files = rows.map((r) => ({ filename: r.filename, contentType: r.contentType, content: Buffer.from(r.data) }));
+  if (attachmentCache.size >= ATTACHMENT_CACHE_SIZE) {
+    attachmentCache.delete(attachmentCache.keys().next().value as string);
+  }
+  attachmentCache.set(campaignId, files);
+  return files;
+}
+
+export async function sendMail(
+  sender: Sender,
+  mail: { id: string; campaignId: string; toEmail: string; subject: string; body: string },
+) {
+  // Bodies are sanitised on the way in; toSafeHtml also handles legacy plain-text rows.
+  const html = toSafeHtml(mail.body);
   const info = await getTransporter(sender).sendMail({
     from: `"${sender.name}" <${sender.email}>`,
     to: mail.toEmail,
     subject: mail.subject,
-    text: mail.body,
-    html: `<div style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(mail.body)}</div>`,
+    text: toPlainText(html),
+    html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${html}</div>`,
+    attachments: await campaignAttachments(mail.campaignId),
     // Deterministic Message-ID: if a crash forces a resend, receivers can dedupe on it.
     messageId: `<${mail.id}@reachinbox.local>`,
     headers: { 'X-ReachInbox-Email-Id': mail.id },

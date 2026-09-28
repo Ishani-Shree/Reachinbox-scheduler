@@ -191,10 +191,10 @@ Example body for `POST /api/campaigns`:
 **Frontend**
 - [x] Real Google OAuth login; header shows name, email and avatar; logout
 - [x] Dashboard with Scheduled and Sent tabs (live counts), Compose button
-- [x] Compose: sender, recipients (type or paste, or CSV/TXT upload with detected-address count), subject, body, delay between emails, hourly limit, start time (Send Later picker with presets)
+- [x] Compose: sender, recipients (type or paste, or CSV/TXT upload with detected-address count), subject, rich-text body (toolbar: undo/redo, text size, bold/italic/underline, alignment, lists, indent, quote, strikethrough), attachments (up to 5 files, 10 MB), delay between emails, hourly limit, start time (Send Later popover with presets)
 - [x] Scheduled list: email, subject, scheduled time, status; Sent list: email, subject, sent time, sent/failed
 - [x] Loading skeletons, empty states, error states with retry, toasts
-- [x] Search (Elasticsearch), pagination, auto-refresh every 5 s, email detail page with Ethereal preview link
+- [x] Search (Elasticsearch), status filter (Sent / Failed, Rate limited), pagination, auto-refresh every 5 s, email detail page with rendered body, attachment cards and Ethereal preview link
 - [x] Reusable UI components (Button, Field, Modal, Avatar, StatusBadge, EmptyState, Spinner) and typed API layer
 
 ---
@@ -205,6 +205,8 @@ Example body for `POST /api/campaigns`:
 - When a job is deferred for rate limiting, its reserved slot in the later window stays counted, even if the job is later cancelled or the process is down past that hour. In that case it reserves again, and the old slot just goes unused.
 - The rate-limit Lua script builds its keys at runtime. That's fine on a single Redis node. On Redis Cluster the keys would need a shared hash tag.
 - Senders are a shared pool (the Ethereal accounts), and the per-sender limit applies across all users. Slack alerts go to the owner of the campaign that hit the limit.
-- The body is plain text (rendered as HTML with preserved line breaks). There is no rich-text editor or templating.
-- The Figma file needs a login I didn't have, so the UI follows the ReachInbox dashboard layout (sidebar with user card, Compose, Scheduled/Sent; list rows with status pills; compose page with *Upload List*, *Delay between 2 emails*, *Hourly Limit*, *Send Later*) rather than an exact pixel match.
+- Rich-text bodies are HTML. The server sanitises them (`sanitize-html` allow-list) before storing or sending, and the dashboard sanitises again (DOMPurify) before rendering. Plain-text bodies sent through the API are escaped and keep their line breaks. There is no per-recipient templating.
+- Attachments are stored once per campaign in Postgres (`Attachment` table, max 5 files / 10 MB) and sent with every email of that campaign. Object storage (S3) would be the next step at larger scale.
+- The login page shows the email/password form from the Figma, but only Google sign-in is implemented, as the assignment requires.
+- The UI follows the provided Figma: login card, sidebar (logo, user card, Compose, Core: Scheduled/Sent), list rows with time/status pills, Gmail-style email detail, and the compose page with the Send Later popover. The sidebar also has a small Slack card and a Bull Board link, which the assignment requires but the Figma doesn't show.
 - Bull Board has optional basic auth (`BULL_BOARD_USER`/`PASS`). It is open by default for the demo.

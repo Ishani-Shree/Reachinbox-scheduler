@@ -12,3 +12,35 @@
     @apply bg-white font-sans text-ink-900 antialiased;
   }
 }
+
+/* Rich-text content: the compose editor and the rendered email body share these rules. */
+@layer components {
+  .email-body p,
+  .email-body div {
+    @apply min-h-[1em];
+  }
+  .email-body p + p {
+    @apply mt-3;
+  }
+  .email-body ul {
+    @apply list-disc pl-6;
+  }
+  .email-body ol {
+    @apply list-decimal pl-6;
+  }
+  .email-body blockquote {
+    @apply my-3 border-l-4 border-yellow-400 bg-yellow-50 px-3 py-2;
+  }
+  .email-body a {
+    @apply text-brand-600 underline;
+  }
+  .email-body font[size='1'] {
+    @apply text-xs;
+  }
+  .email-body font[size='5'] {
+    @apply text-lg;
+  }
+  .email-body font[size='6'] {
+    @apply text-2xl;
+  }
+}

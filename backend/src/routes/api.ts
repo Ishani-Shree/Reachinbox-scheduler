@@ -5,7 +5,7 @@ import { prisma } from '../lib/clients';
 import { createLogger } from '../lib/logger';
 import { requireAuth, signState, verifyState } from '../middleware/auth';
 import { createCampaign, createCampaignSchema } from '../services/campaigns';
-import { emailStats, getEmail, listEmails } from '../services/emails';
+import { emailStats, getAttachment, getEmail, listEmails } from '../services/emails';
 import { completeSlackOAuth, disconnectSlack, notifyUser, slackAuthorizeUrl, slackConfigured } from '../services/slack';
 import { asyncHandler, HttpError } from '../utils/http';
 
@@ -47,6 +47,7 @@ apiRouter.post(
 // ---------- Emails ----------
 const listQuery = z.object({
   tab: z.enum(['scheduled', 'sent']).default('scheduled'),
+  filter: z.enum(['all', 'sent', 'failed', 'deferred']).default('all'),
   q: z.string().trim().max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -75,6 +76,22 @@ apiRouter.get(
     const email = await getEmail(req.userId!, req.params.id);
     if (!email) throw new HttpError(404, 'Email not found');
     res.json(email);
+  }),
+);
+
+apiRouter.get(
+  '/attachments/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const file = await getAttachment(req.userId!, req.params.id);
+    if (!file) throw new HttpError(404, 'Attachment not found');
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.filename)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    // Uploaded files are served back to the browser, so never let them run as HTML/script.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+    res.send(Buffer.from(file.data));
   }),
 );
 

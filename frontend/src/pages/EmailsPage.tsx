@@ -5,15 +5,27 @@ import { emailsApi } from '../api';
 import { errorMessage } from '../api/client';
 import { EmailListItem, EmailListSkeleton } from '../components/emails/EmailListItem';
 import { Pagination } from '../components/emails/Pagination';
-import { SearchBar } from '../components/emails/SearchBar';
+import { SearchBar, type FilterOption } from '../components/emails/SearchBar';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useStats } from '../context/StatsContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useQuery } from '../hooks/useQuery';
-import type { EmailTab } from '../types';
+import type { EmailFilter, EmailTab } from '../types';
 
 const PAGE_SIZE = 50;
+
+const FILTERS: Record<EmailTab, FilterOption[]> = {
+  scheduled: [
+    { value: 'all', label: 'All scheduled' },
+    { value: 'deferred', label: 'Rate limited' },
+  ],
+  sent: [
+    { value: 'all', label: 'All' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'failed', label: 'Failed' },
+  ],
+};
 
 const EMPTY: Record<EmailTab, { icon: JSX.Element; title: string; description: string }> = {
   scheduled: {
@@ -35,13 +47,14 @@ export function EmailsPage({ tab }: { tab: EmailTab }) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<EmailFilter>('all');
   const q = useDebounce(search.trim(), 300);
 
-  useEffect(() => setPage(1), [tab, q]);
+  useEffect(() => setPage(1), [tab, q, filter]);
 
   const { data, error, loading, reload } = useQuery(
-    () => emailsApi.list({ tab, q: q || undefined, page, limit: PAGE_SIZE }),
-    [tab, q, page],
+    () => emailsApi.list({ tab, filter, q: q || undefined, page, limit: PAGE_SIZE }),
+    [tab, filter, q, page],
     { pollMs: 5000 },
   );
 
@@ -65,11 +78,16 @@ export function EmailsPage({ tab }: { tab: EmailTab }) {
       />
     );
   } else if (!data?.items.length) {
-    content = q ? (
-      <EmptyState icon={EMPTY[tab].icon} title="No matches" description={`Nothing in ${tab} matches "${q}".`} />
-    ) : (
-      <EmptyState {...EMPTY[tab]} action={<Button onClick={() => navigate('/compose')}>Compose new email</Button>} />
-    );
+    content =
+      q || filter !== 'all' ? (
+        <EmptyState
+          icon={EMPTY[tab].icon}
+          title="No matches"
+          description={q ? `Nothing in ${tab} matches "${q}".` : 'No emails match this filter.'}
+        />
+      ) : (
+        <EmptyState {...EMPTY[tab]} action={<Button onClick={() => navigate('/compose')}>Compose new email</Button>} />
+      );
   } else {
     content = (
       <>
@@ -85,7 +103,15 @@ export function EmailsPage({ tab }: { tab: EmailTab }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <SearchBar value={search} onChange={setSearch} onRefresh={refresh} refreshing={refreshing} />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        onRefresh={refresh}
+        refreshing={refreshing}
+        filter={filter}
+        filterOptions={FILTERS[tab]}
+        onFilterChange={setFilter}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
     </div>
   );

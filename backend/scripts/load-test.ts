@@ -35,6 +35,7 @@ async function main() {
     startAt: new Date(),
     delayBetweenSeconds: 0,
     hourlyLimit: hourly,
+    attachments: [],
   });
 
   console.log(`Scheduled ${campaign.totalRecipients} emails for ${user.email} via ${sender.email}`);

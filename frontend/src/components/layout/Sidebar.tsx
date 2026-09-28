@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useStats } from '../../context/StatsContext';
 import { cn } from '../../utils/cn';
-import { Button } from '../ui/Button';
+import { Logo } from '../ui/Logo';
 import { SlackCard } from './SlackCard';
 import { UserMenu } from './UserMenu';
 
@@ -28,14 +28,14 @@ function NavItem({
       onClick={onClick}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-          isActive ? 'bg-brand-50 font-semibold text-ink-900' : 'text-ink-700 hover:bg-ink-50',
+          'flex h-9 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors',
+          isActive ? 'bg-brand-50 font-medium text-ink-900' : 'text-ink-700 hover:bg-ink-50',
         )
       }
     >
-      <span className="text-ink-500">{icon}</span>
+      <span className="text-ink-700">{icon}</span>
       <span className="flex-1">{label}</span>
-      {count !== undefined && <span className="text-xs font-medium text-ink-500">{count.toLocaleString()}</span>}
+      {count !== undefined && <span className="text-xs text-ink-500">{count.toLocaleString()}</span>}
     </NavLink>
   );
 }
@@ -45,48 +45,46 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { stats } = useStats();
 
   return (
-    <aside className="flex h-full w-72 flex-col gap-5 border-r border-ink-100 bg-white p-5">
-      <div className="px-1 text-2xl font-extrabold tracking-tight">ONB</div>
+    <aside className="flex h-full w-64 flex-col gap-4 bg-white px-3 pb-4 pt-5">
+      <Logo className="px-2" />
       <UserMenu />
-      <Button
-        variant="outline"
-        size="lg"
-        fullWidth
+      <button
         onClick={() => {
           navigate('/compose');
           onNavigate?.();
         }}
+        className="h-9 w-full rounded-full border border-brand-500 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-50"
       >
         Compose
-      </Button>
+      </button>
 
-      <nav className="flex flex-col gap-1">
-        <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">Core</p>
+      <nav className="flex flex-col gap-0.5">
+        <p className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-400">Core</p>
         <NavItem
           to="/scheduled"
-          icon={<Clock size={18} />}
+          icon={<Clock size={16} />}
           label="Scheduled"
           count={stats?.scheduled}
           onClick={onNavigate}
         />
         <NavItem
           to="/sent"
-          icon={<Send size={18} />}
+          icon={<Send size={16} />}
           label="Sent"
           count={stats ? stats.sent + stats.failed : undefined}
           onClick={onNavigate}
         />
       </nav>
 
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="mt-auto flex flex-col gap-2">
         <SlackCard />
         <a
           href={`${BACKEND_URL}/admin/queues`}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-500 hover:bg-ink-50 hover:text-ink-900"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-ink-500 hover:bg-ink-50 hover:text-ink-900"
         >
-          <Activity size={16} /> Queue dashboard
+          <Activity size={14} /> Queue dashboard
         </a>
       </div>
     </aside>

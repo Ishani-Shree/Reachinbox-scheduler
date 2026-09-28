@@ -29,6 +29,7 @@
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.10.1",
+    "sanitize-html": "^2.17.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -38,6 +39,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.20.4",
     "@types/nodemailer": "^6.4.24",
+    "@types/sanitize-html": "^2.16.1",
     "concurrently": "^9.2.4",
     "prisma": "^6.19.3",
     "tsx": "^4.23.15",

@@ -13,13 +13,31 @@ export interface Sender {
 
 export type EmailStatus = 'scheduled' | 'sending' | 'sent' | 'failed';
 export type EmailTab = 'scheduled' | 'sent';
+export type EmailFilter = 'all' | 'sent' | 'failed' | 'deferred';
+
+export interface AttachmentMeta {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+}
+
+export interface AttachmentUpload {
+  filename: string;
+  contentType: string;
+  /** base64 */
+  data: string;
+}
 
 export interface Email {
   id: string;
   campaignId: string;
   toEmail: string;
   subject: string;
+  /** Sanitised HTML */
   body: string;
+  /** Plain-text snippet for list rows */
+  preview: string;
   status: EmailStatus;
   scheduledAt: string;
   originalScheduledAt: string;
@@ -28,6 +46,10 @@ export interface Email {
   error: string | null;
   deferredCount: number;
   sender: { name: string; email: string };
+}
+
+export interface EmailDetail extends Email {
+  attachments: AttachmentMeta[];
 }
 
 export interface EmailListResponse {
@@ -52,6 +74,7 @@ export interface CreateCampaignRequest {
   startAt: string;
   delayBetweenSeconds: number;
   hourlyLimit: number;
+  attachments: AttachmentUpload[];
 }
 
 export interface CreateCampaignResponse {

@@ -2,6 +2,7 @@ import type { Email, EmailStatus, Sender } from '@prisma/client';
 import { env } from '../config/env';
 import { es, prisma } from '../lib/clients';
 import { createLogger } from '../lib/logger';
+import { toPlainText } from '../utils/html';
 
 const log = createLogger('search');
 const index = env.ELASTICSEARCH_INDEX;
@@ -22,8 +23,9 @@ const toDoc = (e: EmailWithSender) => ({
   campaignId: e.campaignId,
   toEmail: e.toEmail,
   subject: e.subject,
-  body: e.body,
+  body: toPlainText(e.body),
   status: e.status,
+  deferredCount: e.deferredCount,
   senderEmail: e.sender.email,
   senderName: e.sender.name,
   scheduledAt: e.scheduledAt,
@@ -44,6 +46,7 @@ export async function ensureIndex() {
           subject: { type: 'text' },
           body: { type: 'text' },
           status: { type: 'keyword' },
+          deferredCount: { type: 'integer' },
           senderEmail: { type: 'keyword' },
           senderName: { type: 'text' },
           scheduledAt: { type: 'date' },
@@ -88,6 +91,7 @@ export async function searchEmailIds(params: {
   userId: string;
   q: string;
   statuses: EmailStatus[];
+  deferredOnly?: boolean;
   from: number;
   size: number;
 }): Promise<{ ids: string[]; total: number } | null> {
@@ -99,7 +103,11 @@ export async function searchEmailIds(params: {
       _source: false,
       query: {
         bool: {
-          filter: [{ term: { userId: params.userId } }, { terms: { status: params.statuses } }],
+          filter: [
+            { term: { userId: params.userId } },
+            { terms: { status: params.statuses } },
+            ...(params.deferredOnly ? [{ range: { deferredCount: { gt: 0 } } }] : []),
+          ],
           should: [
             {
               multi_match: {

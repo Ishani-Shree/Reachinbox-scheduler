@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { StatsProvider } from '../../context/StatsContext';
 import { IconButton } from '../ui/Button';
+import { Logo } from '../ui/Logo';
 import { FullPageSpinner } from '../ui/Spinner';
 import { Sidebar } from './Sidebar';
 
@@ -37,7 +38,7 @@ export function AppLayout() {
             <IconButton label="Open menu" onClick={() => setMobileOpen(true)}>
               <Menu size={20} />
             </IconButton>
-            <span className="text-lg font-extrabold">ONB</span>
+            <Logo className="text-xl" />
           </div>
           <Outlet />
         </main>
