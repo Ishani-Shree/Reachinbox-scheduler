@@ -4,6 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "predev": "node scripts/free-port.cjs",
     "dev": "concurrently -n api,worker -c blue,magenta \"tsx watch src/server.ts\" \"tsx watch src/worker.ts\"",
     "dev:api": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/worker.ts",
