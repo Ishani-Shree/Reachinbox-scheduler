@@ -50,6 +50,15 @@ npm run dev                 # http://localhost:5173
 ```
 Vite proxies `/api` to `localhost:4000`, so the session cookie is same-origin.
 
+### Hosted version (Render)
+The repo includes a [`render.yaml`](render.yaml) Blueprint: **one free web service** runs the API, the BullMQ worker (`RUN_WORKER_IN_API=true`, since free plans have no background workers) and serves the built React app from the same origin. It also creates a free **Postgres** and a free **Key Value** (Redis-compatible, `noeviction`). Elasticsearch runs on **Elastic Cloud** (`ELASTICSEARCH_URL` + `ELASTICSEARCH_API_KEY`).
+
+1. Render → **New → Blueprint** → select this repo → fill in the secret env vars (Google, Slack, Elasticsearch) → **Apply**.
+2. `BACKEND_URL`/`FRONTEND_URL` default to Render's `RENDER_EXTERNAL_URL`. The OAuth callbacks default to `<url>/api/auth/google/callback` and `<url>/api/slack/oauth/callback`; register those in Google Cloud and the Slack app.
+3. Migrations run on start (`prisma migrate deploy`).
+
+Free-tier caveats: the service sleeps after about 15 minutes without traffic, so an email due while it sleeps is sent as soon as it wakes (BullMQ promotes overdue delayed jobs, and reconciliation re-enqueues from Postgres). The free Key Value store is not persistent across restarts; reconciliation rebuilds the queue from Postgres, which is the source of truth.
+
 ---
 
 ## 2. Configuration

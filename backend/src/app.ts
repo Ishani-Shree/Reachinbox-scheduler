@@ -3,6 +3,8 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { env } from './config/env';
@@ -41,6 +43,14 @@ export function createApp() {
   boardAdapter.setBasePath('/admin/queues');
   createBullBoard({ queues: [new BullMQAdapter(emailQueue)], serverAdapter: boardAdapter });
   app.use('/admin/queues', bullBoardAuth, boardAdapter.getRouter());
+
+  // In production the built React app is served by this same service (one URL,
+  // same-origin cookies). Locally the Vite dev server on :5173 is used instead.
+  const frontendDist = path.resolve(process.cwd(), '../frontend/dist');
+  if (existsSync(path.join(frontendDist, 'index.html'))) {
+    app.use(express.static(frontendDist, { index: false, maxAge: '1h' }));
+    app.get(/^\/(?!api\/|admin\/).*/, (_req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
+  }
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 

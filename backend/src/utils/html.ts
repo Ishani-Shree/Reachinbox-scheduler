@@ -3,8 +3,26 @@ import sanitizeHtml from 'sanitize-html';
 /** Tags produced by the compose editor (contentEditable + execCommand). */
 const ALLOWED: sanitizeHtml.IOptions = {
   allowedTags: [
-    'p', 'div', 'br', 'span', 'b', 'strong', 'i', 'em', 'u', 's', 'strike',
-    'ol', 'ul', 'li', 'blockquote', 'font', 'h1', 'h2', 'h3', 'a',
+    'p',
+    'div',
+    'br',
+    'span',
+    'b',
+    'strong',
+    'i',
+    'em',
+    'u',
+    's',
+    'strike',
+    'ol',
+    'ul',
+    'li',
+    'blockquote',
+    'font',
+    'h1',
+    'h2',
+    'h3',
+    'a',
   ],
   allowedAttributes: {
     a: ['href', 'target', 'rel'],

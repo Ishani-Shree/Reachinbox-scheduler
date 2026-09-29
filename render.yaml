@@ -1,0 +1,59 @@
+# Render Blueprint: one web service (API + BullMQ worker + built React app),
+# a Postgres database and a Redis-compatible Key Value store, all on free plans.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: reachinbox-scheduler
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: >-
+      cd frontend && npm ci --include=dev && npm run build &&
+      cd ../backend && npm ci --include=dev && npm run build
+    startCommand: cd backend && npx prisma migrate deploy && node dist/src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      # Free web services cannot run a separate background worker.
+      - key: RUN_WORKER_IN_API
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reachinbox-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: reachinbox-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      # Filled in on the Render dashboard (never committed):
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ELASTICSEARCH_URL
+        sync: false
+      - key: ELASTICSEARCH_API_KEY
+        sync: false
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+
+  - type: keyvalue
+    name: reachinbox-redis
+    plan: free
+    region: singapore
+    # BullMQ must never have its keys evicted.
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # internal connections only
+
+databases:
+  - name: reachinbox-db
+    plan: free
+    region: singapore

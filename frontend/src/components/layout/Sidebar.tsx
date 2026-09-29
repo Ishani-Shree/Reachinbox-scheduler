@@ -7,7 +7,8 @@ import { Logo } from '../ui/Logo';
 import { SlackCard } from './SlackCard';
 import { UserMenu } from './UserMenu';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:4000';
+// Dev: the API runs on :4000 next to Vite. Production: the API serves the app, so same origin.
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
 
 function NavItem({
   to,

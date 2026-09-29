@@ -1,30 +1,12 @@
-import { Worker } from 'bullmq';
-import { env } from './config/env';
-import { createRedisConnection, prisma, redis } from './lib/clients';
+import { prisma, redis } from './lib/clients';
 import { createLogger } from './lib/logger';
-import { EMAIL_QUEUE_NAME, emailQueue, type EmailJobData } from './queue/emailQueue';
-import { processEmailJob } from './queue/processor';
-import { reconcileQueue } from './queue/reconcile';
+import { emailQueue } from './queue/emailQueue';
+import { startWorker } from './queue/worker';
 
 const log = createLogger('worker');
 
 async function main() {
-  await reconcileQueue();
-
-  const worker = new Worker<EmailJobData>(EMAIL_QUEUE_NAME, processEmailJob, {
-    connection: createRedisConnection(),
-    concurrency: env.WORKER_CONCURRENCY,
-    // Global ceiling enforced by BullMQ in Redis, across every worker instance.
-    limiter: { max: env.QUEUE_LIMITER_MAX, duration: env.QUEUE_LIMITER_DURATION_MS },
-  });
-
-  worker.on('failed', (job, err) => log.warn(`Job ${job?.id} failed: ${err.message}`));
-  worker.on('error', (err) => log.error('Worker error', err));
-
-  log.info(
-    `Worker started: concurrency=${env.WORKER_CONCURRENCY}, ` +
-      `minDelay=${env.MIN_DELAY_BETWEEN_SENDS_MS}ms, perSenderHourly=${env.MAX_EMAILS_PER_HOUR_PER_SENDER}`,
-  );
+  const worker = await startWorker();
 
   // Graceful shutdown: stop taking jobs and let in-flight sends finish.
   // Anything interrupted is picked up again by BullMQ's stalled-job check.

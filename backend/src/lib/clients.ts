@@ -13,4 +13,8 @@ export function createRedisConnection() {
 /** Shared connection for app-level commands (rate limit counters, dedupe keys). */
 export const redis = createRedisConnection();
 
-export const es = new ElasticClient({ node: env.ELASTICSEARCH_URL, requestTimeout: 5000 });
+export const es = new ElasticClient({
+  node: env.ELASTICSEARCH_URL,
+  requestTimeout: 5000,
+  ...(env.ELASTICSEARCH_API_KEY ? { auth: { apiKey: env.ELASTICSEARCH_API_KEY } } : {}),
+});
